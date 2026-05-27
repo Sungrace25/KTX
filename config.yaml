@@ -1,25 +1,26 @@
 # 코레일 계정 정보
 korail:
-  id: "YOUR_KORAIL_ID"         # 코레일 회원번호(10자리) 또는 이메일
-  password: "YOUR_PASSWORD"    # 비밀번호
+  id: "0460273899"         # 코레일 회원번호(10자리) 또는 이메일
+  password: "Ilung@3172"    # 비밀번호
 
 # 텔레그램 봇 설정
 # 1. 텔레그램에서 @BotFather → /newbot → 토큰 발급
 # 2. @userinfobot 에 메시지를 보내면 자신의 chat_id 확인 가능
 telegram:
-  bot_token: "YOUR_BOT_TOKEN"  # 예: "1234567890:ABCdef-..."
-  chat_id: "YOUR_CHAT_ID"      # 예: "123456789"
+  bot_token: "8647838809:AAEdZe8_TC8TE8fDCkipjKT8kBGLKbgoNbg
+"  # 예: "1234567890:ABCdef-..."
+  chat_id: "412751094"      # 예: "123456789"
 
 # 열차 검색 조건
 search:
-  departure: "서울"            # 출발역 (korail 역명 그대로)
-  arrival: "부산"              # 도착역
-  date: "20261201"             # 출발일 (YYYYMMDD)
-  time_from: "0800"            # 조회 시작 시간 (HHMM)
-  time_to: "1200"              # 조회 종료 시간 (HHMM) - 이 시각 이후 출발 열차 제외
+  departure: "용산"            # 출발역 (korail 역명 그대로)
+  arrival: "계룡"              # 도착역
+  date: "20260530"             # 출발일 (YYYYMMDD)
+  time_from: "0900"            # 조회 시작 시간 (HHMM)
+  time_to: "1015"              # 조회 종료 시간 (HHMM) - 이 시각 이후 출발 열차 제외
   train_types:                 # 원하는 열차 종류 (빈 리스트 [] = 전체)
     - "KTX"
-    # - "KTX-산천"
+    - "KTX-산천"
     # - "KTX-이음"
   seat_types:                  # general: 일반실 / special: 특실 (복수 지정 가능)
     - "general"
