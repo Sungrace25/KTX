@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """KTX 취소표 모니터링 · 텔레그램 알림 · 자동 예약"""
 
+import os
 import sys
 import time
 import logging
@@ -23,6 +24,15 @@ except ImportError:
     print("[오류] korail2 라이브러리가 없습니다. 'pip install -r requirements.txt' 를 실행하세요.")
     sys.exit(1)
 
+# 코레일 앱 버전 후보 (최신순) — MACRO ERROR 시 순서대로 재시도
+_KORAIL_VERSIONS = [
+    '260527001', '260401001', '260301001', '260201001', '260101001',
+    '251201001', '251101001', '251001001', '250901001', '250801001',
+    '250701001', '250601001', '250501001', '250401001', '250301001',
+    '250201001', '250101001', '241201001', '241101001', '241001001',
+    '240701001', '240401001', '240101001', '231231001',
+]
+
 
 # ── 로깅 설정 ──────────────────────────────────────────────────────────────────
 
@@ -41,6 +51,35 @@ logger = _setup_logging()
 # ── 설정 로드 ──────────────────────────────────────────────────────────────────
 
 def load_config(path: str = "config.yaml") -> dict:
+    # GitHub Actions 환경: 환경변수로 설정 읽기
+    if os.environ.get("KORAIL_ID"):
+        return {
+            "korail": {
+                "id": os.environ["KORAIL_ID"],
+                "password": os.environ["KORAIL_PASSWORD"],
+            },
+            "telegram": {
+                "bot_token": os.environ["TELEGRAM_BOT_TOKEN"],
+                "chat_id": os.environ["TELEGRAM_CHAT_ID"],
+            },
+            "search": {
+                "departure": os.environ.get("DEPARTURE", "서울"),
+                "arrival": os.environ.get("ARRIVAL", "부산"),
+                "date": os.environ["DATE"],
+                "time_from": os.environ.get("TIME_FROM", "0000"),
+                "time_to": os.environ.get("TIME_TO", "2359"),
+                "train_types": [t.strip() for t in os.environ.get("TRAIN_TYPES", "KTX").split(",")],
+                "seat_types": [s.strip() for s in os.environ.get("SEAT_TYPES", "general").split(",")],
+            },
+            "monitor": {
+                "interval": 10,
+                "auto_reserve": os.environ.get("AUTO_RESERVE", "true").lower() == "true",
+                "stop_after_reserve": True,
+                "max_attempts": 1,
+                "notify_on_start": False,
+            },
+        }
+    # 로컬 환경: config.yaml 읽기
     p = Path(path)
     if not p.exists():
         logger.error(f"설정 파일 없음: {path}")
@@ -76,7 +115,10 @@ def send_telegram(bot_token: str, chat_id: str, text: str) -> bool:
         logger.info("텔레그램 전송 성공")
         return True
     except requests.RequestException as exc:
-        logger.error(f"텔레그램 전송 실패: {exc}")
+        detail = ""
+        if hasattr(exc, "response") and exc.response is not None:
+            detail = f" → {exc.response.text}"
+        logger.error(f"텔레그램 전송 실패: {exc}{detail}")
         return False
 
 
@@ -106,6 +148,7 @@ class KTXMonitor:
     def __init__(self, config: dict):
         self.cfg = config
         self.korail: Korail | None = None
+        self._ver_idx = 0
         self._login()
 
     # ── 코레일 로그인 ──────────────────────────────────────────────────────────
@@ -114,7 +157,17 @@ class KTXMonitor:
         k = self.cfg["korail"]
         logger.info("코레일 로그인 중...")
         self.korail = Korail(k["id"], k["password"], auto_login=True)
-        logger.info("코레일 로그인 성공")
+        self.korail._version = _KORAIL_VERSIONS[self._ver_idx]
+        logger.info(f"코레일 로그인 성공 (버전: {_KORAIL_VERSIONS[self._ver_idx]})")
+
+    def _next_version(self) -> None:
+        """MACRO ERROR 발생 시 다음 버전 후보로 교체"""
+        self._ver_idx += 1
+        if self._ver_idx >= len(_KORAIL_VERSIONS):
+            raise RuntimeError("모든 버전 후보 소진 — korail2 라이브러리 업데이트 필요")
+        v = _KORAIL_VERSIONS[self._ver_idx]
+        self.korail._version = v
+        logger.info(f"버전 변경 → {v}")
 
     def _try_relogin(self) -> None:
         logger.warning("세션 만료 감지 — 재로그인 시도")
@@ -261,7 +314,14 @@ class KTXMonitor:
             except KorailError as exc:
                 err = str(exc)
                 logger.error(f"코레일 오류: {err}")
-                if any(k in err.lower() for k in ("로그인", "login", "session", "expire")):
+                if "MACRO" in err:
+                    try:
+                        self._next_version()
+                    except RuntimeError as fatal:
+                        tg_send(f"🚨 {fatal}")
+                        sys.exit(1)
+                    continue  # 대기 없이 즉시 재시도
+                elif any(k in err.lower() for k in ("로그인", "login", "session", "expire")):
                     try:
                         self._try_relogin()
                     except RuntimeError as fatal:
