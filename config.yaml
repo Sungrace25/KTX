@@ -7,8 +7,7 @@ korail:
 # 1. 텔레그램에서 @BotFather → /newbot → 토큰 발급
 # 2. @userinfobot 에 메시지를 보내면 자신의 chat_id 확인 가능
 telegram:
-  bot_token: "8647838809:AAEdZe8_TC8TE8fDCkipjKT8kBGLKbgoNbg
-"  # 예: "1234567890:ABCdef-..."
+  bot_token: "8647838809:AAEdZe8_TC8TE8fDCkipjKT8kBGLKbgoNbg"  # 예: "1234567890:ABCdef-..."
   chat_id: "412751094"      # 예: "123456789"
 
 # 열차 검색 조건
