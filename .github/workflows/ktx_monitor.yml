@@ -2,7 +2,7 @@ name: KTX 취소표 모니터링
 
 on:
   schedule:
-    - cron: '*/5 * * * *'   # 5분마다 자동 실행 (Secrets 기본값 사용)
+    - cron: '*/5 * * * *'   # 5분마다 자동 실행 (아래 기본값 사용)
   workflow_dispatch:          # 수동 실행 시 아래 입력폼 표시
     inputs:
       departure:
@@ -34,6 +34,8 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: 코드 체크아웃
@@ -50,16 +52,19 @@ jobs:
 
       - name: 취소표 확인
         env:
+          # ── Secret: 아래 4개만 GitHub Secrets에 등록 ──
           KORAIL_ID:          ${{ secrets.KORAIL_ID }}
           KORAIL_PASSWORD:    ${{ secrets.KORAIL_PASSWORD }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
-          TRAIN_TYPES:        ${{ secrets.TRAIN_TYPES }}
-          SEAT_TYPES:         ${{ secrets.SEAT_TYPES }}
-          DEPARTURE:          ${{ inputs.departure || secrets.DEPARTURE }}
-          ARRIVAL:            ${{ inputs.arrival   || secrets.ARRIVAL }}
-          DATE:               ${{ inputs.date      || secrets.DATE }}
-          TIME_FROM:          ${{ inputs.time_from || secrets.TIME_FROM }}
-          TIME_TO:            ${{ inputs.time_to   || secrets.TIME_TO }}
-          AUTO_RESERVE:       ${{ inputs.auto_reserve != '' && inputs.auto_reserve || secrets.AUTO_RESERVE }}
+
+          # ── 검색 조건: 수동 실행 시 폼 입력값 / 자동 실행 시 아래 기본값 ──
+          DEPARTURE:    ${{ inputs.departure || '용산' }}
+          ARRIVAL:      ${{ inputs.arrival   || '계룡' }}
+          DATE:         ${{ inputs.date      || '20260530' }}
+          TIME_FROM:    ${{ inputs.time_from || '0900' }}
+          TIME_TO:      ${{ inputs.time_to   || '1015' }}
+          AUTO_RESERVE: ${{ inputs.auto_reserve != '' && inputs.auto_reserve || 'true' }}
+          TRAIN_TYPES:  'KTX'
+          SEAT_TYPES:   'general'
         run: python ktx_monitor.py
