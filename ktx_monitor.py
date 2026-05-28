@@ -75,7 +75,7 @@ def load_config(path: str = "config.yaml") -> dict:
                 "interval": 10,
                 "auto_reserve": os.environ.get("AUTO_RESERVE", "true").lower() == "true",
                 "stop_after_reserve": True,
-                "max_attempts": 1,
+                "max_attempts": 0,
                 "notify_on_start": False,
             },
         }
