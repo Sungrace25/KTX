@@ -1,0 +1,65 @@
+name: KTX 취소표 모니터링
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # 5분마다 자동 실행 (Secrets 기본값 사용)
+  workflow_dispatch:          # 수동 실행 시 아래 입력폼 표시
+    inputs:
+      departure:
+        description: '출발역'
+        required: true
+        default: '용산'
+      arrival:
+        description: '도착역'
+        required: true
+        default: '계룡'
+      date:
+        description: '출발일 (YYYYMMDD, 예: 20260530)'
+        required: true
+        default: '20260530'
+      time_from:
+        description: '시작 시간 (HHMM, 예: 0900)'
+        required: true
+        default: '0900'
+      time_to:
+        description: '종료 시간 (HHMM, 예: 1015)'
+        required: true
+        default: '1015'
+      auto_reserve:
+        description: '취소표 발견 시 자동 예약'
+        required: true
+        type: boolean
+        default: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 패키지 설치
+        run: pip install korail2 requests pyyaml
+
+      - name: 취소표 확인
+        env:
+          KORAIL_ID:          ${{ secrets.KORAIL_ID }}
+          KORAIL_PASSWORD:    ${{ secrets.KORAIL_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID:   ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRAIN_TYPES:        ${{ secrets.TRAIN_TYPES }}
+          SEAT_TYPES:         ${{ secrets.SEAT_TYPES }}
+          DEPARTURE:          ${{ inputs.departure || secrets.DEPARTURE }}
+          ARRIVAL:            ${{ inputs.arrival   || secrets.ARRIVAL }}
+          DATE:               ${{ inputs.date      || secrets.DATE }}
+          TIME_FROM:          ${{ inputs.time_from || secrets.TIME_FROM }}
+          TIME_TO:            ${{ inputs.time_to   || secrets.TIME_TO }}
+          AUTO_RESERVE:       ${{ inputs.auto_reserve != '' && inputs.auto_reserve || secrets.AUTO_RESERVE }}
+        run: python ktx_monitor.py
